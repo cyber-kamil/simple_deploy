@@ -1,13 +1,13 @@
 # Simple Deploy
 
-Simple Deploy is a Go command-line tool that allows you to run a script on multiple servers simultaneously. It takes a comma-separated list of servers and a script as flags and runs the script on each server.
+Simple Deploy is a Go command-line tool that allows you to run a script on multiple servers simultaneously. It takes a comma-separated list of servers and a script as flags and runs the script on each server provided you have the servers listed in your SSH config.
 
 ## Installation
 
 You can install the tool by running:
 
 ```
-go get -u github.com/cyber-kamil/simple_deploy
+go install github.com/cyber-kamil/simple_deploy@latest
 ```
 
 ## Usage 
