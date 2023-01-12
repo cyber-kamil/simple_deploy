@@ -8,46 +8,34 @@ import (
 	"strings"
 
 	"github.com/cyber-kamil/simple_deploy/pkg/config"
-	"golang.org/x/crypto/ssh"
+	"github.com/cyber-kamil/simple_deploy/pkg/ssh_exec"
 )
 
 func main() {
 	servers := flag.String("servers", "", "Comma-separated list of servers")
-	script := flag.String("script", "", "Location of script to run")
+	scriptPath := flag.String("script", "", "Location of script to run")
 	flag.Parse()
 
-	if *servers == "" || *script == "" {
+	if *servers == "" || *scriptPath == "" {
 		log.Fatal("Both 'servers' and 'script' flags are required")
 	}
 
-	serverList := strings.Split(*servers, ",")
-
-	fmt.Println(config.GetSigner())
-	os.Exit(1)
-
-	for _, server := range serverList {
-		client, err := ssh.Dial("tcp", server, &ssh.ClientConfig{
-			User: "username",
-			Auth: []ssh.AuthMethod{
-				ssh.PublicKeys(config.GetSigner()),
-			},
-		})
-		if err != nil {
-			log.Fatalf("Failed to connect to %s: %s", server, err)
-		}
-		defer client.Close()
-
-		session, err := client.NewSession()
-		if err != nil {
-			log.Fatalf("Failed to create session on %s: %s", server, err)
-		}
-		defer session.Close()
-
-		output, err := session.CombinedOutput("bash " + *script)
-		if err != nil {
-			log.Fatalf("Failed to run script on %s: %s", server, err)
-		}
-
-		fmt.Printf("Output from %s: %s\n", server, output)
+	// Get the contents of the bash script to run from a file
+	scriptBytes, err := os.ReadFile(*scriptPath)
+	if err != nil {
+		fmt.Println("Error reading bash script file:", err)
+		return
 	}
+	script := string(scriptBytes)
+
+	serverList := strings.Split(*servers, ",")
+	for _, server := range serverList {
+		serverConfig := config.GetServerConfig(server)
+		if serverConfig.User == "" {
+			continue
+		}
+
+		ssh_exec.ExecSSH(serverConfig, script)
+	}
+
 }

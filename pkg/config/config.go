@@ -1,45 +1,38 @@
 package config
 
 import (
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
 
-	"golang.org/x/crypto/ssh"
+	"github.com/kevinburke/ssh_config"
 )
 
-func GetSigner() ssh.Signer {
-	cl := filepath.Join(os.Getenv("HOME"), "ssh", "config")
-	sshConfig, err := os.ReadFile(cl)
-	if err != nil {
-		log.Fatalf("Failed to read SSH config file: %s", err)
-	}
-	sshConfigLines := strings.Split(string(sshConfig), "\n")
+type Server struct {
+	Host         string
+	HostName     string
+	User         string
+	IdentityFile string
+}
 
-	var host, identityFile string
-
-	for _, line := range sshConfigLines {
-		if strings.HasPrefix(line, "Host") {
-			host = strings.TrimSpace(strings.TrimPrefix(line, "Host"))
-		} else if strings.HasPrefix(line, "IdentityFile") {
-			identityFile = strings.TrimSpace(strings.TrimPrefix(line, "IdentityFile"))
-		}
-
-		if host == "example.com" && identityFile != "" {
-			break
-		}
-	}
-	privateKey, err := os.ReadFile(identityFile)
-	if err != nil {
-		log.Fatalf("Failed to read private key: %s", err)
+func GetServerConfig(server string) Server {
+	currentServer := Server{
+		server,
+		ssh_config.Get(server, "HostName"),
+		ssh_config.Get(server, "User"),
+		ssh_config.Get(server, "IdentityFile"),
 	}
 
-	signer, err := ssh.ParsePrivateKey(privateKey)
-	if err != nil {
-		log.Fatalf("Failed to parse private key: %s", err)
-	}
-	// Use signer for ssh client config
+	a := strings.Split(currentServer.IdentityFile, "/")
+	i := 0
 
-	return signer
+	// Remove the ~/ at the begining of file so we get exact identity file path
+	copy(a[i:], a[i+1:]) // Shift a[i+1:] left one index.
+	a[len(a)-1] = ""     // Erase last element (write zero value).
+	a = a[:len(a)-1]     // Truncate slice.
+	simplePath := strings.Join(a[:], "/")
+
+	currentServer.IdentityFile = filepath.Join(os.Getenv("HOME"), simplePath)
+
+	return currentServer
 }
